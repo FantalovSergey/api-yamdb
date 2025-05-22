@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from reviews.models import Review, Comment
 from .serializers import ReviewSerializer, CommentSerializer
@@ -18,7 +18,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание отзыва с автоматическим указанием автора."""
         title_id = self.kwargs.get('title_id')
-        serializer.save(author=self.request.user, title_id=title_id)
+        serializer.save(author_id=self.request.user.id, title_id=title_id)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -34,4 +34,4 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание комментария с автоматическим указанием автора."""
         review_id = self.kwargs.get('review_id')
-        serializer.save(author=self.request.user, review_id=review_id) 
+        serializer.save(author_id=self.request.user.id, review_id=review_id) 

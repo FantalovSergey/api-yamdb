@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.db.models import Avg
 
 User = get_user_model()
 
@@ -13,11 +14,8 @@ class Review(models.Model):
         verbose_name='Произведение'
     )
     text = models.TextField(verbose_name='Текст отзыва')
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='reviews',
-        verbose_name='Автор'
+    author_id = models.IntegerField(
+        verbose_name='ID автора'
     )
     score = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)],
@@ -34,13 +32,17 @@ class Review(models.Model):
         ordering = ['-pub_date']
         constraints = [
             models.UniqueConstraint(
-                fields=['title', 'author'],
+                fields=['title', 'author_id'],
                 name='unique_review'
             )
         ]
 
     def __str__(self):
-        return f'Отзыв {self.author} на {self.title}'
+        return f'Отзыв {self.author_id} на {self.title}'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.title.update_rating()
 
 
 class Comment(models.Model):
@@ -52,11 +54,8 @@ class Comment(models.Model):
         verbose_name='Отзыв'
     )
     text = models.TextField(verbose_name='Текст комментария')
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='comments',
-        verbose_name='Автор'
+    author_id = models.IntegerField(
+        verbose_name='ID автора'
     )
     pub_date = models.DateTimeField(
         auto_now_add=True,
@@ -69,7 +68,7 @@ class Comment(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self):
-        return f'Комментарий {self.author} к отзыву {self.review}'
+        return f'Комментарий {self.author_id} к отзыву {self.review}'
 
 
 class Title(models.Model):
@@ -85,6 +84,10 @@ class Title(models.Model):
         null=True,
         blank=True,
         verbose_name='Описание'
+    )
+    rating = models.IntegerField(
+        null=True,
+        verbose_name='Рейтинг'
     )
     category = models.ForeignKey(
         'Category',
@@ -107,6 +110,12 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
+
+    def update_rating(self):
+        """Обновление рейтинга произведения."""
+        avg_rating = self.reviews.aggregate(Avg('score'))['score__avg']
+        self.rating = int(avg_rating) if avg_rating else None
+        self.save()
 
 
 class Category(models.Model):
@@ -167,4 +176,4 @@ class GenreTitle(models.Model):
         verbose_name_plural = 'Жанры произведений'
 
     def __str__(self):
-        return f'{self.genre} {self.title}' 
+        return f'{self.genre} {self.title}'
