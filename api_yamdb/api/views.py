@@ -1,13 +1,11 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from reviews.models import Review, Comment
+from reviews.models import Review, Comment, Category, Genre, Title
 from .serializers import ReviewSerializer, CommentSerializer
-from .permissions import IsAuthorOrReadOnly
+from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
 
 from rest_framework import viewsets, mixins, filters
-from rest_framework.permissions import IsAdminUser, SAFE_METHODS, BasePermission
 
-from reviews.models import Category, Genre, Title
 from .serializers import (
     CategorySerializer,
     GenreSerializer,
@@ -19,7 +17,7 @@ from .serializers import (
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Review."""
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
 
     def get_queryset(self):
         """Получение queryset для отзывов конкретного произведения."""
@@ -29,13 +27,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание отзыва с автоматическим указанием автора."""
         title_id = self.kwargs.get('title_id')
-        serializer.save(author_id=self.request.user.id, title_id=title_id)
+        serializer.save(author=self.request.user.id, title_id=title_id)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Comment."""
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
 
     def get_queryset(self):
         """Получение queryset для комментариев конкретного отзыва."""
@@ -45,7 +43,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание комментария с автоматическим указанием автора."""
         review_id = self.kwargs.get('review_id')
-        serializer.save(author_id=self.request.user.id, review_id=review_id) 
+        serializer.save(author=self.request.user.id, review_id=review_id) 
 
 
 class CategoryViewSet(
