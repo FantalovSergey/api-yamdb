@@ -24,7 +24,7 @@ class APIToken(APIView):
 
     def post(self, request):
         user = get_object_or_404(User, username=request.data['username'])
-        if user.confirmation_code != request.data['confirmation_code']:
+        if not user.confirmation_code or user.confirmation_code != request.data['confirmation_code']:
             message = {'confirmation_code': 'Неверный код подтверждения'}
             return Response(data=message, status=status.HTTP_400_BAD_REQUEST)
         refresh = RefreshToken.for_user(user)
@@ -55,12 +55,14 @@ class SignUpViewSet(CreateViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data
-        if not User.objects.filter(**data):
+        user = User.objects.filter(**data).first()
+        if not user:
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
-        send_confirmation_code(User.objects.get(**data))
-        return Response(data, status.HTTP_200_OK)
+            user = User.objects.filter(**data).first()
+        send_confirmation_code(user)
+        return Response({'email': user.email}, status.HTTP_200_OK)
 
 
 class AdminViewSet(ModelViewSet):
