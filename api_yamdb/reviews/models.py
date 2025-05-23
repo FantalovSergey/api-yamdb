@@ -15,8 +15,11 @@ class Review(models.Model):
         verbose_name='Произведение'
     )
     text = models.TextField(verbose_name='Текст отзыва')
-    author = models.IntegerField(
-        verbose_name='ID автора'
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        verbose_name='Автор'
     )
     score = models.IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)],
@@ -55,8 +58,11 @@ class Comment(models.Model):
         verbose_name='Отзыв'
     )
     text = models.TextField(verbose_name='Текст комментария')
-    author = models.IntegerField(
-        verbose_name='ID автора'
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Автор'
     )
     pub_date = models.DateTimeField(
         auto_now_add=True,

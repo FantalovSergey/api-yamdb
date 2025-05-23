@@ -18,6 +18,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Review."""
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         """Получение queryset для отзывов конкретного произведения."""
@@ -27,13 +28,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание отзыва с автоматическим указанием автора."""
         title_id = self.kwargs.get('title_id')
-        serializer.save(author=self.request.user.id, title_id=title_id)
+        serializer.save(author=self.request.user, title_id=title_id)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Comment."""
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         """Получение queryset для комментариев конкретного отзыва."""
@@ -43,7 +45,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Создание комментария с автоматическим указанием автора."""
         review_id = self.kwargs.get('review_id')
-        serializer.save(author=self.request.user.id, review_id=review_id) 
+        serializer.save(author=self.request.user, review_id=review_id) 
 
 
 class CategoryViewSet(
