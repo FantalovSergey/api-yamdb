@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from reviews.models import Review, Comment, Category, Genre, Title
@@ -22,13 +23,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Получение queryset для отзывов конкретного произведения."""
-        title_id = self.kwargs.get('title_id')
-        return Review.objects.filter(title_id=title_id)
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        return title.reviews.all()
 
     def perform_create(self, serializer):
         """Создание отзыва с автоматическим указанием автора."""
-        title_id = self.kwargs.get('title_id')
-        serializer.save(author=self.request.user, title_id=title_id)
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        serializer.save(author=self.request.user, title_id=title.id)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -37,15 +38,20 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
+    def get_review(self):
+        """Получние отзыва, к которому относится(-ятся) комментарий(-и)"""
+        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        return get_object_or_404(title.reviews,
+                                 id=self.kwargs.get('review_id'))
+
     def get_queryset(self):
         """Получение queryset для комментариев конкретного отзыва."""
-        review_id = self.kwargs.get('review_id')
-        return Comment.objects.filter(review_id=review_id)
+        return self.get_review().comments.all()
 
     def perform_create(self, serializer):
         """Создание комментария с автоматическим указанием автора."""
-        review_id = self.kwargs.get('review_id')
-        serializer.save(author=self.request.user, review_id=review_id) 
+        review = self.get_review()
+        serializer.save(author=self.request.user, review_id=review.id)
 
 
 class CategoryViewSet(

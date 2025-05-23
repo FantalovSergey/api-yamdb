@@ -10,8 +10,8 @@ VALID_SYMBOLS_ASCII = tuple(set(range(33, 127)) - INVALID_SYMBOLS_ASCII)
 def send_confirmation_code(user):
     code = ''.join(chr(choice(VALID_SYMBOLS_ASCII))
                    for _ in range(settings.CONFIRMATION_CODE_LENGTH))
-    user.confirmation_code = code
-    user.save()
+    # user.confirmation_code = code
+    # user.save()
     send_mail(
         subject='Confirmation code',
         message=(f'\t{user.username},\nВаш код подтверждения '
@@ -19,4 +19,3 @@ def send_confirmation_code(user):
         from_email=None,
         recipient_list=[user.email],
     )
-    return code

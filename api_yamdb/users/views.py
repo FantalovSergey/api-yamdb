@@ -62,7 +62,7 @@ class SignUpViewSet(CreateViewSet):
             self.perform_create(serializer)
             user = User.objects.filter(**data).first()
         send_confirmation_code(user)
-        return Response({'email': user.email}, status.HTTP_200_OK)
+        return Response(data, status.HTTP_200_OK)
 
 
 class AdminViewSet(ModelViewSet):
