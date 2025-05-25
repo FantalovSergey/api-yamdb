@@ -38,10 +38,11 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         slug_field='slug',
         queryset=Category.objects.all()
     )
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
-        fields = ('id', 'name', 'year', 'description', 'genre', 'category')
+        fields = ('id', 'name', 'year', 'description', 'genre', 'category', 'rating')
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -54,14 +55,15 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ('author',)
 
     def validate(self, data):
-        """Проверка на уникальность отзыва и существование title_id."""
+        """Проверка на уникальность отзыва."""
         if self.context['request'].method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = self.context['request'].user.id
+
             # Проверка на уникальность отзыва
             if Review.objects.filter(
-                title_id=title_id,
-                author=author
+                    title_id=title_id,
+                    author=author
             ).exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв на это произведение'

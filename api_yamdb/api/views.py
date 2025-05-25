@@ -6,6 +6,12 @@ from reviews.models import Category, Genre, Title, Review
 from .serializers import ReviewSerializer, CommentSerializer
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
 
+from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from reviews.models import Review, Comment, Category, Genre, Title
+from .serializers import ReviewSerializer, CommentSerializer
+from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
+
 from rest_framework import viewsets, mixins, filters
 
 from .serializers import (
@@ -99,8 +105,30 @@ class GenreViewSet(
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset
+
+        category_slug = self.request.query_params.get('category')
+        genre_slug = self.request.query_params.get('genre')
+        name = self.request.query_params.get('name')
+        year = self.request.query_params.get('year')
+
+        if category_slug:
+            queryset = queryset.filter(category__slug=category_slug)
+        if genre_slug:
+            queryset = queryset.filter(genre__slug=genre_slug)
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        if year:
+            queryset = queryset.filter(year=year)
+
+        return queryset
