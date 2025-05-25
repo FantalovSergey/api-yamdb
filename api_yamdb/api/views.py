@@ -1,22 +1,15 @@
-from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from reviews.models import Category, Genre, Title, Review
-from .serializers import ReviewSerializer, CommentSerializer
+from rest_framework.response import Response
+
+from reviews.models import Category, Genre, Review, Title
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
-
-from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from reviews.models import Review, Comment, Category, Genre, Title
-from .serializers import ReviewSerializer, CommentSerializer
-from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
-
-from rest_framework import viewsets, mixins, filters
-
 from .serializers import (
     CategorySerializer,
+    CommentSerializer,
     GenreSerializer,
+    ReviewSerializer,
     TitleReadSerializer,
     TitleWriteSerializer
 )
@@ -25,10 +18,12 @@ from .serializers import (
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Review."""
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
+        """Получение произведения."""
         try:
             return Title.objects.get(id=self.kwargs.get('title_id'))
         except Title.DoesNotExist:
@@ -47,10 +42,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Comment."""
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
+        """Получение произведения."""
         try:
             return Title.objects.get(id=self.kwargs.get('title_id'))
         except Title.DoesNotExist:
@@ -80,6 +77,7 @@ class CategoryViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
+    """ViewSet для модели Category."""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -94,6 +92,7 @@ class GenreViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
+    """ViewSet для модели Genre."""
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -103,6 +102,7 @@ class GenreViewSet(
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    """ViewSet для модели Title."""
     queryset = Title.objects.all()
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
@@ -110,11 +110,13 @@ class TitleViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
+        """Получение сериалайзера в зависимости от типа запроса."""
         if self.action in ['list', 'retrieve']:
             return TitleReadSerializer
         return TitleWriteSerializer
 
     def get_queryset(self):
+        """Получение queryset произведений."""
         queryset = self.queryset
 
         category_slug = self.request.query_params.get('category')
@@ -132,3 +134,34 @@ class TitleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(year=year)
 
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        """Создание объекта произведения
+        с выводом жанра и категории в качестве объектов в ответе."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        data = serializer.data
+        data['genre'] = [
+            Genre.objects.filter(slug=genre).values('name', 'slug')[0]
+            for genre in data['genre']
+        ]
+        data['category'] = Category.objects.filter(
+            slug=data['category']).values('name', 'slug')[0]
+        return Response(data, status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Обновление объекта произведения
+        с выводом жанра и категории в качестве объектов в ответе."""
+        serializer = self.get_serializer(
+            instance=self.get_object(), data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        data = serializer.data
+        data['genre'] = [
+            Genre.objects.filter(slug=genre).values('name', 'slug')[0]
+            for genre in data['genre']
+        ]
+        data['category'] = Category.objects.filter(
+            slug=data['category']).values('name', 'slug')[0]
+        return Response(data, status.HTTP_200_OK)

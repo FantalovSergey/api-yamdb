@@ -5,6 +5,7 @@ from django.db import models
 
 
 class User(AbstractUser):
+    """Модель пользователя."""
     ROLE_CHOICES = (
         ('user', 'user'),
         ('moderator', 'moderator'),
@@ -21,15 +22,21 @@ class User(AbstractUser):
                          'в качестве имени пользователя!')
             )
         ],
+        verbose_name='Имя пользователя',
     )
     email = models.EmailField(max_length=254, unique=True)
-    first_name = models.CharField(max_length=150, blank=True, default='')
-    last_name = models.CharField(max_length=150, blank=True, default='')
-    bio = models.TextField(blank=True, default='')
-    role = models.SlugField(default='user', choices=ROLE_CHOICES)
+    first_name = models.CharField(
+        max_length=150, blank=True, default='', verbose_name='Имя')
+    last_name = models.CharField(
+        max_length=150, blank=True, default='', verbose_name='Фамилия')
+    bio = models.TextField(
+        blank=True, default='', verbose_name='О пользователе')
+    role = models.SlugField(
+        default='user', choices=ROLE_CHOICES, verbose_name='Роль')
     confirmation_code = models.CharField(
         max_length=settings.CONFIRMATION_CODE_LENGTH,
-        default='0'
+        default='0',
+        verbose_name='Код подтверждения',
     )
 
     class Meta:
