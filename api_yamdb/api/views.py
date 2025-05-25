@@ -1,7 +1,8 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from reviews.models import Review, Comment, Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review
 from .serializers import ReviewSerializer, CommentSerializer
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
 
@@ -21,14 +22,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
+    def get_title(self):
+        try:
+            return Title.objects.get(id=self.kwargs.get('title_id'))
+        except Title.DoesNotExist:
+            raise NotFound('Произведение с указанным ID не существует!')
+
     def get_queryset(self):
         """Получение queryset для отзывов конкретного произведения."""
-        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
-        return title.reviews.all()
+        return self.get_title().reviews.all()
 
     def perform_create(self, serializer):
         """Создание отзыва с автоматическим указанием автора."""
-        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
+        title = self.get_title()
         serializer.save(author=self.request.user, title_id=title.id)
 
 
@@ -38,11 +44,19 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
+    def get_title(self):
+        try:
+            return Title.objects.get(id=self.kwargs.get('title_id'))
+        except Title.DoesNotExist:
+            raise NotFound('Произведение с указанным ID не существует!')
+
     def get_review(self):
-        """Получние отзыва, к которому относится(-ятся) комментарий(-и)"""
-        title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
-        return get_object_or_404(title.reviews,
-                                 id=self.kwargs.get('review_id'))
+        """Получение отзыва, к которому относится(-ятся) комментарий(-и)"""
+        title = self.get_title()
+        try:
+            return title.reviews.get(id=self.kwargs.get('review_id'))
+        except Review.DoesNotExist:
+            raise NotFound('Отзыв с указанным ID не существует')
 
     def get_queryset(self):
         """Получение queryset для комментариев конкретного отзыва."""
