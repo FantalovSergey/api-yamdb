@@ -11,8 +11,8 @@ def send_confirmation_code(user):
     """Отправка кода подтверждения и его запись в БД."""
     code = ''.join(chr(choice(VALID_SYMBOLS_ASCII))
                    for _ in range(settings.CONFIRMATION_CODE_LENGTH))
-    # user.confirmation_code = code
-    # user.save()
+    user.confirmation_code = code
+    user.save()
     send_mail(
         subject='Confirmation code',
         message=(f'\t{user.username},\nВаш код подтверждения '
