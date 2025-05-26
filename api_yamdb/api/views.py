@@ -2,6 +2,7 @@ from rest_framework import filters, mixins, status, viewsets
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+from django.db.models import Avg
 
 from reviews.models import Category, Genre, Review, Title
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
@@ -116,8 +117,8 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitleWriteSerializer
 
     def get_queryset(self):
-        """Получение queryset произведений."""
-        queryset = self.queryset
+        """Получение queryset произведений с аннотированным рейтингом."""
+        queryset = self.queryset.annotate(rating=Avg('reviews__score'))
 
         category_slug = self.request.query_params.get('category')
         genre_slug = self.request.query_params.get('genre')
