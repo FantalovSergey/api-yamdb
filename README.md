@@ -50,6 +50,12 @@ cd api_yamdb
 python manage.py migrate
 ```
 
+Заполните базу данных при необходимости:
+
+```
+python manage.py import_csv
+```
+
 Запустите проект:
 
 ```
