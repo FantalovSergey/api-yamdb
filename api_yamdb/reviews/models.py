@@ -38,7 +38,7 @@ class Review(models.Model):
     class Meta:
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        ordering = ['-pub_date']
+        ordering = ('-pub_date',)
         constraints = [
             models.UniqueConstraint(
                 fields=['title', 'author'],
@@ -73,7 +73,7 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ['-pub_date']
+        ordering = ('-pub_date',)
 
     def __str__(self):
         return f'Комментарий {self.author} к отзыву {self.review}'
@@ -89,7 +89,7 @@ class BaseCategoryGenre(models.Model):
     slug = models.SlugField(unique=True, verbose_name='Слаг')
 
     class Meta:
-        ordering = ['slug']
+        ordering = ('slug',)
 
     def __str__(self):
         return self.name
@@ -132,7 +132,7 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
-        ordering = ['-year']
+        ordering = ('-year', 'id')
 
     def update_rating(self):
         """Обновление рейтинга произведения."""

@@ -160,7 +160,8 @@ class TitleFilter(filters.FilterSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Title."""
-    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
+    queryset = Title.objects.all().annotate(
+        rating=Avg('reviews__score')).order_by('-year', 'id')
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (filters.DjangoFilterBackend, SearchFilter)
     filterset_class = TitleFilter
