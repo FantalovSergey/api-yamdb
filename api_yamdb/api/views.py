@@ -1,33 +1,91 @@
-from rest_framework import filters, mixins, status, viewsets
+from django.contrib.auth import get_user_model
+from django_filters import rest_framework as filters
+from rest_framework import mixins, status, permissions, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from django.db.models import Avg
 
-from reviews.models import Category, Genre, Review, Title
+from . import serializers
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
-from .serializers import (
-    CategorySerializer,
-    CommentSerializer,
-    GenreSerializer,
-    ReviewSerializer,
-    TitleReadSerializer,
-    TitleWriteSerializer
-)
+from reviews.models import Category, Genre, Review, Title
+
+User = get_user_model()
+
+
+class CreateViewSet(mixins.CreateModelMixin, GenericViewSet):
+    pass
+
+
+class APIToken(APIView):
+    """View-класс для работы с токеном доступа."""
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        """Обработка POST-запросов."""
+        serializer = serializers.TokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.data, status.HTTP_200_OK)
+
+
+class SignUpViewSet(CreateViewSet):
+    """ViewSet для регистрации и выдачи кода подтверждения."""
+    serializer_class = serializers.SignUpSerializer
+    queryset = User.objects.all()
+    permission_classes = (permissions.AllowAny,)
+
+    def create(self, request, *args, **kwargs):
+        """Сериализация данных и отправка ответа с требуемым статус-кодом."""
+        data = request.data
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(data, status.HTTP_200_OK)
+
+
+class AdminViewSet(ModelViewSet):
+    """ViewSet для работы администратора с моделями пользователей."""
+    serializer_class = serializers.AdminSerializer
+    queryset = User.objects.all()
+    lookup_field = 'username'
+    filter_backends = (SearchFilter,)
+    search_fields = ('username',)
+    http_method_names = ('get', 'post', 'patch', 'delete')
+
+    @action(
+        detail=False,
+        methods=['GET', 'PATCH'],
+        permission_classes=(permissions.IsAuthenticated,)
+    )
+    def me(self, request):
+        """Обработка запроса пользователя на работу с собственным профилем."""
+        if request.method == 'GET':
+            serializer = serializers.UserSerializer(request.user)
+            return Response(serializer.data, status.HTTP_200_OK)
+        serializer = serializers.UserSerializer(
+            request.user, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        return Response(serializer.data, status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Review."""
-    serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly,
-                          IsAuthorOrModeratorOrReadOnly]
-    http_method_names = ['get', 'post', 'patch', 'delete']
+    serializer_class = serializers.ReviewSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrReadOnly)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_title(self):
         """Получение произведения."""
         try:
             return Title.objects.get(id=self.kwargs.get('title_id'))
         except Title.DoesNotExist:
-            raise NotFound('Произведение с указанным ID не существует!')
+            raise NotFound('Произведение с указанным ID не существует.')
 
     def get_queryset(self):
         """Получение queryset для отзывов конкретного произведения."""
@@ -41,25 +99,19 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Comment."""
-    serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly,
-                          IsAuthorOrModeratorOrReadOnly]
-    http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_title(self):
-        """Получение произведения."""
-        try:
-            return Title.objects.get(id=self.kwargs.get('title_id'))
-        except Title.DoesNotExist:
-            raise NotFound('Произведение с указанным ID не существует!')
+    serializer_class = serializers.CommentSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrReadOnly)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_review(self):
-        """Получение отзыва, к которому относится(-ятся) комментарий(-и)"""
-        title = self.get_title()
+        """Получение отзыва, к которому относится(-ятся) комментарий(-и)."""
         try:
-            return title.reviews.get(id=self.kwargs.get('review_id'))
+            return Review.objects.get(id=self.kwargs.get('review_id'),
+                                      title__id=self.kwargs.get('title_id'))
         except Review.DoesNotExist:
-            raise NotFound('Отзыв с указанным ID не существует')
+            raise NotFound(
+                'Отзыв или(и) произведение с указанными ID не существуют.')
 
     def get_queryset(self):
         """Получение queryset для комментариев конкретного отзыва."""
@@ -71,97 +123,53 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, review_id=review.id)
 
 
-class CategoryViewSet(
+class CategoryGenreViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
+    """Базовый ViewSet для моделей Category и Genre."""
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+
+
+class CategoryViewSet(CategoryGenreViewSet):
     """ViewSet для модели Category."""
     queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-    lookup_field = 'slug'
+    serializer_class = serializers.CategorySerializer
 
 
-class GenreViewSet(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet
-):
+class GenreViewSet(CategoryGenreViewSet):
     """ViewSet для модели Genre."""
     queryset = Genre.objects.all()
-    serializer_class = GenreSerializer
-    permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-    lookup_field = 'slug'
+    serializer_class = serializers.GenreSerializer
+
+
+class TitleFilter(filters.FilterSet):
+    """Фильтр для TitleViewSet."""
+    category = filters.Filter(field_name='category__slug')
+    genre = filters.Filter(field_name='genre__slug')
+
+    class Meta:
+        model = Title
+        fields = ('name', 'year')
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Title."""
-    queryset = Title.objects.all()
-    permission_classes = [IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-    http_method_names = ['get', 'post', 'patch', 'delete']
+    queryset = Title.objects.all().annotate(
+        rating=Avg('reviews__score')).order_by('-year', 'id')
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.DjangoFilterBackend, SearchFilter)
+    filterset_class = TitleFilter
+    search_fields = ('name',)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_serializer_class(self):
         """Получение сериалайзера в зависимости от типа запроса."""
-        if self.action in ['list', 'retrieve']:
-            return TitleReadSerializer
-        return TitleWriteSerializer
-
-    def get_queryset(self):
-        """Получение queryset произведений."""
-        queryset = self.queryset
-
-        category_slug = self.request.query_params.get('category')
-        genre_slug = self.request.query_params.get('genre')
-        name = self.request.query_params.get('name')
-        year = self.request.query_params.get('year')
-
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        if genre_slug:
-            queryset = queryset.filter(genre__slug=genre_slug)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if year:
-            queryset = queryset.filter(year=year)
-
-        return queryset
-
-    def create(self, request, *args, **kwargs):
-        """Создание объекта произведения
-        с выводом жанра и категории в качестве объектов в ответе."""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        data = serializer.data
-        data['genre'] = [
-            Genre.objects.filter(slug=genre).values('name', 'slug')[0]
-            for genre in data['genre']
-        ]
-        data['category'] = Category.objects.filter(
-            slug=data['category']).values('name', 'slug')[0]
-        return Response(data, status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        """Обновление объекта произведения
-        с выводом жанра и категории в качестве объектов в ответе."""
-        serializer = self.get_serializer(
-            instance=self.get_object(), data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        data = serializer.data
-        data['genre'] = [
-            Genre.objects.filter(slug=genre).values('name', 'slug')[0]
-            for genre in data['genre']
-        ]
-        data['category'] = Category.objects.filter(
-            slug=data['category']).values('name', 'slug')[0]
-        return Response(data, status.HTTP_200_OK)
+        if self.action in ('list', 'retrieve'):
+            return serializers.TitleReadSerializer
+        return serializers.TitleWriteSerializer
