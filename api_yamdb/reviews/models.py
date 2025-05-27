@@ -123,10 +123,6 @@ class Title(models.Model):
         related_name='titles',
         verbose_name='Жанр',
     )
-    rating = models.IntegerField(
-        null=True,
-        verbose_name='Рейтинг'
-    )
     category = models.ForeignKey(
         Category, on_delete=models.SET_NULL,
         related_name='titles', null=True,

@@ -7,6 +7,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from django.db.models import Avg
 
 from . import serializers
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
@@ -159,7 +160,7 @@ class TitleFilter(filters.FilterSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для модели Title."""
-    queryset = Title.objects.all()
+    queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (filters.DjangoFilterBackend, SearchFilter)
     filterset_class = TitleFilter
