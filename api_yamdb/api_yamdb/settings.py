@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters',
     'reviews.apps.ReviewsConfig',
     'users.apps.UsersConfig',
 ]
@@ -128,5 +129,3 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
 AUTH_USER_MODEL = 'users.User'
-
-CONFIRMATION_CODE_LENGTH = 10
