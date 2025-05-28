@@ -1,11 +1,9 @@
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from django.db.models import Avg
 
 from . import constants
+from .validators import validate_year
 
 User = get_user_model()
 
@@ -90,6 +88,7 @@ class BaseCategoryGenre(models.Model):
 
     class Meta:
         ordering = ('slug',)
+        abstract = True
 
     def __str__(self):
         return self.name
@@ -97,14 +96,14 @@ class BaseCategoryGenre(models.Model):
 
 class Category(BaseCategoryGenre):
     """Модель категории."""
-    class Meta:
+    class Meta(BaseCategoryGenre.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
 
 class Genre(BaseCategoryGenre):
     """Модель жанра."""
-    class Meta:
+    class Meta(BaseCategoryGenre.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -114,7 +113,7 @@ class Title(models.Model):
     name = models.CharField(max_length=constants.CHAR_FIELD_MAX_LENGTH,
                             verbose_name='Название')
     year = models.IntegerField(
-        validators=[MaxValueValidator(datetime.now().year)],
+        validators=[validate_year],
         verbose_name='Год выпуска',
     )
     description = models.TextField(blank=True, verbose_name='Описание')
@@ -133,12 +132,6 @@ class Title(models.Model):
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
         ordering = ('-year', 'id')
-
-    def update_rating(self):
-        """Обновление рейтинга произведения."""
-        avg_rating = self.reviews.aggregate(Avg('score'))['score__avg']
-        self.rating = int(avg_rating) if avg_rating else None
-        self.save()
 
     def __str__(self):
         return self.name

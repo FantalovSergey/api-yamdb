@@ -6,7 +6,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Category, Comment, Genre, Review, Title
-from users import constants, validators
+from users import constants
+from users.validators import validate_username
 
 User = get_user_model()
 
@@ -14,13 +15,14 @@ User = get_user_model()
 class SignUpSerializer(serializers.Serializer):
     """Сериалайзер для регистрации."""
     username = serializers.CharField(
-        max_length=constants.CHAR_FIELD_MAX_LENGTH)
+        max_length=constants.CHAR_FIELD_MAX_LENGTH,
+        validators=[validate_username],
+    )
     email = serializers.EmailField(max_length=constants.EMAIL_FIELD_MAX_LENGTH)
 
     def validate(self, attrs):
         """Валидация регистрационных данных."""
         username = attrs.get('username')
-        validators.validate_username(username)
         user_with_username = User.objects.filter(
             username=username).first()
         user_with_email = User.objects.filter(
@@ -38,7 +40,7 @@ class SignUpSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """Регистрация нового пользователя и отправка кода подтверждения."""
-        user, created = User.objects.get_or_create(**validated_data)
+        user, _ = User.objects.get_or_create(**validated_data)
         send_mail(
             subject='Confirmation code',
             message=(f'\t{user.username},\nВаш код подтверждения '

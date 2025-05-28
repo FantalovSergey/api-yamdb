@@ -10,14 +10,12 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from django.db.models import Avg
 
 from . import serializers
+from .base_viewsets import CategoryGenreViewSet
+from .filters import TitleFilter
 from .permissions import IsAuthorOrModeratorOrReadOnly, IsAdminOrReadOnly
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
-
-
-class CreateViewSet(mixins.CreateModelMixin, GenericViewSet):
-    pass
 
 
 class APIToken(APIView):
@@ -31,7 +29,7 @@ class APIToken(APIView):
         return Response(serializer.data, status.HTTP_200_OK)
 
 
-class SignUpViewSet(CreateViewSet):
+class SignUpViewSet(mixins.CreateModelMixin, GenericViewSet):
     """ViewSet для регистрации и выдачи кода подтверждения."""
     serializer_class = serializers.SignUpSerializer
     queryset = User.objects.all()
@@ -67,8 +65,7 @@ class AdminViewSet(ModelViewSet):
             return Response(serializer.data, status.HTTP_200_OK)
         serializer = serializers.UserSerializer(
             request.user, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status.HTTP_200_OK)
 
@@ -123,19 +120,6 @@ class CommentViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user, review_id=review.id)
 
 
-class CategoryGenreViewSet(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet
-):
-    """Базовый ViewSet для моделей Category и Genre."""
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
-
-
 class CategoryViewSet(CategoryGenreViewSet):
     """ViewSet для модели Category."""
     queryset = Category.objects.all()
@@ -146,16 +130,6 @@ class GenreViewSet(CategoryGenreViewSet):
     """ViewSet для модели Genre."""
     queryset = Genre.objects.all()
     serializer_class = serializers.GenreSerializer
-
-
-class TitleFilter(filters.FilterSet):
-    """Фильтр для TitleViewSet."""
-    category = filters.Filter(field_name='category__slug')
-    genre = filters.Filter(field_name='genre__slug')
-
-    class Meta:
-        model = Title
-        fields = ('name', 'year')
 
 
 class TitleViewSet(viewsets.ModelViewSet):
