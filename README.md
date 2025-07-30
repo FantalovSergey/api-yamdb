@@ -20,7 +20,7 @@ git clone https://github.com/FantalovSergey/api-yamdb.git
 cd api-yamdb
 ```
 
-Cоздайте и активировуйте виртуальное окружение:
+Cоздайте и активируйте виртуальное окружение:
 
 ```
 python -m venv venv
