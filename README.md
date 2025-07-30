@@ -23,17 +23,25 @@ cd api-yamdb
 Cоздайте и активируйте виртуальное окружение:
 
 ```
-python -m venv venv
+python3 -m venv venv
 ```
 
-```
-source venv/bin/activate
-```
+* Для Linux/macOS
+
+    ```
+    source venv/bin/activate
+    ```
+
+* Для Windows
+
+    ```
+    venv\Scripts\activate
+    ```
 
 Установите зависимости из файла requirements.txt:
 
 ```
-python -m pip install --upgrade pip
+python3 -m pip install --upgrade pip
 ```
 
 ```
